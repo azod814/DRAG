@@ -239,7 +239,7 @@ def banner():
     RESET = "\033[0m"
 
     print(f"""{PURPLE}
-╔══════════════════════════════════════════════════════════════════════╗
+╔══════════════════════════════════════════════════════╗
 {RESET}{CYAN}                                                                      {RESET}{PURPLE}
 {RESET}{RED}──────██                                                              {RESET}{PURPLE}
 {RESET}{RED}─────████                                                            {RESET}{PURPLE}
@@ -259,11 +259,11 @@ def banner():
 {RESET}{RED}────────────────────█─▀█████───█                                               {RESET}{PURPLE}
 {RESET}{RED}──────────────────────█─▀████▄▀                                                 {RESET}{PURPLE}
 {RESET}{RED}────────────────────────█                                                                {RESET}{PURPLE}
-{RESET}{CYAN}──────────────────────────█                                                                 {RESET}{PURPLE}
+{RESET}{RED}──────────────────────────█                                                                 {RESET}{PURPLE}
 {RESET}{CYAN}               Author    : azod814                                                      {RESET}{GREEN}{RESET}{CYAN}                                   {RESET}{PURPLE}
 {RESET}{CYAN}               Instagram : cyber.hunt0                                {RESET}{PURPLE}
 {RESET}{CYAN}               licence   : MIT LICENCE                                  {RESET}{PURPLE}
-╚══════════════════════════════════════════════════════════════════════╝
+╚═══════════════════════════════════════════════════════╝
 {RESET}""")
 
 def find_port():
